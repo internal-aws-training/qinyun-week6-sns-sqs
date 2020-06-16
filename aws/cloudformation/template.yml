@@ -1,0 +1,61 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: AWS SNS-SQS training
+
+Parameters:
+  LambdaFunctionName:
+    Description: Lambda Function Name
+    Default: put-event-lambda
+    Type: String
+  SNSTopicName:
+    Default: auto-triggered-topic
+    Type: String
+
+Resources:
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Handler: index.lambda_handler
+      Role: arn:aws:iam::494526681395:role/for-aws-training
+      Code: 
+        ZipFile: |
+          def lambda_handler(event, handler):
+            print(event)
+      Runtime: "python3.7"
+      Timeout: 3
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: AutoTrigger
+      Subscription:
+        - Endpoint: !GetAtt MySourceQueue.Arn
+          Protocol: sqs
+        - Endpoint: qinyun.wang@outlook.com
+          Protocol: email
+      TopicName: !Ref SNSTopicName
+
+  TriggerSNSEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: The rule use to trigger sns
+      ScheduleExpression: rate(5 minutes)
+      Targets:
+        - Arn: !Ref SNSTopic
+          Id: trigger-sns
+
+  SQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      FifoQueue: true
+      QueueName: QinyunSQS.fifo
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 604800
+
+  LambdaSQSMapper:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt SQSQueue.Arn
+      FunctionName: !Ref LambdaFunctionName
