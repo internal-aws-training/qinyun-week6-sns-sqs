@@ -26,31 +26,9 @@ Resources:
       Runtime: "python3.7"
       Timeout: 3
 
-  SNSTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      DisplayName: AutoTrigger
-      Subscription:
-        - Endpoint: !GetAtt MySourceQueue.Arn
-          Protocol: sqs
-        - Endpoint: qinyun.wang@outlook.com
-          Protocol: email
-      TopicName: !Ref SNSTopicName
-
-  TriggerSNSEvent:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: The rule use to trigger sns
-      ScheduleExpression: rate(5 minutes)
-      Targets:
-        - Arn: !Ref SNSTopic
-          Id: trigger-sns
-
   SQSQueue:
     Type: AWS::SQS::Queue
     Properties:
-      FifoQueue: true
-      QueueName: QinyunSQS.fifo
       VisibilityTimeout: 300
       MessageRetentionPeriod: 604800
 
@@ -59,3 +37,23 @@ Resources:
     Properties:
       EventSourceArn: !GetAtt SQSQueue.Arn
       FunctionName: !Ref LambdaFunctionName
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: AutoTrigger
+      Subscription:
+        - Endpoint: !GetAtt SQSQueue.Arn
+          Protocol: sqs
+        - Endpoint: qinyun.wang@outlook.com
+          Protocol: email
+      TopicName: !Ref SNSTopicName
+  
+  TriggerSNSEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: The rule use to trigger sns
+      ScheduleExpression: rate(5 minutes)
+      Targets:
+        - Arn: !Ref SNSTopic
+          Id: trigger-sns
